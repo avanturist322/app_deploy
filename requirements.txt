@@ -1,9 +1,9 @@
 matplotlib
-numpy
+numpy==1.26.4
 tqdm
 pandas
 scikit-learn
 xgboost
-catboost
+catboost==1.2.5
 plotly
 ipython
