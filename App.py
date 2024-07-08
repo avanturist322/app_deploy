@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 import copy
+import time
 
 import source
 
@@ -33,21 +34,56 @@ def run():
 
     # Создаем сессию
     st.session_state = st.session_state or {}
+    # st.session_state['what_to_predict'] = 'aaa'
+    # st.session_state['what_to_predict_prev'] = st.session_state['what_to_predict']
+
+            # col_a, col_b = st.columns(2)
+            # if col_a.button('Показать загруженные данные'):
+            #     st.session_state['look_on_data'] = True
+
+            # def hide_data():
+            #     st.session_state['look_on_data'] = False
+
+            # if st.session_state['look_on_data']:
+            #     col_b.button('Скрыть загруженные данные', on_click=hide_data)
     
     col1, col2 = st.columns(2)
 
     # !  ===================================  НАЧАЛО ==========================================
     # Создаем сессию
-    if 'begin' not in st.session_state:
-        st.session_state['begin'] = False
+    # if 'begin' not in st.session_state:
+    #     st.session_state['begin'] = False
+
+    # if col1.button("Начать"):
+    #     st.session_state['begin'] = True
+
+    # if col2.button("Сброс"):
+    #     st.session_state['begin'] = False
+    #     st.session_state = {}
+    #     st.session_state['begin'] = False
+
+    # if 'begin' not in st.session_state:
+    #     st.session_state['begin'] = False
+
+
+
 
     if col1.button("Начать"):
         st.session_state['begin'] = True
-
-    if col2.button("Сброс"):
+    def hide_data_0():
         st.session_state['begin'] = False
         st.session_state = {}
         st.session_state['begin'] = False
+
+    if st.session_state['begin']:
+        col2.button('Сброс', on_click=hide_data_0)
+        st.sidebar.button('Сброс', on_click=hide_data_0, key=10)
+            # st.session_state['begin'] = False
+            # st.session_state = {}
+            # st.session_state['begin'] = False
+
+    # st.write(st.session_state)
+
 
     # !  ===================================  1. Загрузка данных ==========================================
     if st.session_state['begin']:
@@ -87,7 +123,7 @@ def run():
             uploaded_gis = col1.file_uploader("TC_par", 
                                             type=['csv', 'xlsx'], 
                                             label_visibility='collapsed')
-            ALL_GIS = source.load_file_to_st(uploaded_gis)
+            ALL_GIS = source.load_file_to_st(uploaded_gis, 'с данными ГИС')
 
             # Добавляем данные в сессию
             st.session_state['all_gis_input'] = ALL_GIS
@@ -113,9 +149,45 @@ def run():
             uploaded_data = col2.file_uploader("data", 
                                             type=['csv', 'xlsx'], 
                                             label_visibility='collapsed')
-            data = source.load_file_to_st(uploaded_data)
+            data = source.load_file_to_st(uploaded_data, 'с результатами измерений на керне')
 
             st.session_state['data_input'] = data
+
+
+            # ! ПРОВЕРКА ЧТО ДАННЫЕ УСПЕШНО ЗАГРУЖЕНЫ
+
+            
+
+            if st.session_state['all_gis_input'] is not None \
+            and st.session_state['data_input'] is not None:
+                st.success('Данные успешно загружены!')
+
+            # else:
+            #     st.write('bad')
+
+                if 'look_on_data' not in st.session_state:
+                    st.session_state['look_on_data'] = False
+                col_a, col_b = st.columns(2)
+                if col_a.button('Показать загруженные данные'):
+                    st.session_state['look_on_data'] = True
+
+                def hide_data():
+                    st.session_state['look_on_data'] = False
+
+                if st.session_state['look_on_data']:
+                    col_b.button('Скрыть загруженные данные', on_click=hide_data)
+                
+                    if st.session_state['look_on_data']:
+                        col1, col2 = st.columns(2)
+
+                        # col1.write(f"Размер файла с данными ГИС: {ALL_GIS.shape} \n\n Колонки: {', '.join(ALL_GIS.columns.values.tolist())}")
+                        col1.write(f'Размер загруженного файла с данными ГИС: {ALL_GIS.shape}')
+                        col1.write(ALL_GIS.head())
+
+
+                        # col2.write(f"Размер файла с результатами измерений на керне: {data.shape} \n\n Колонки: {', '.join(data.columns.values.tolist())}")
+                        col2.write(f'Размер загруженного с результатами измерений на керне: {ALL_GIS.shape}')
+                        col2.write(data.head())
 
 
 
@@ -126,16 +198,17 @@ def run():
         if st.session_state['load_data'] \
             and st.session_state['all_gis_input'] is not None \
             and st.session_state['data_input'] is not None:
-            if st.button("выбрать использовать ли литологию"):
+            if st.button("Перейти к обработке данных"):
                 st.session_state['lith'] = True
 
         # !  ===================================  ИСПОЛЬЗОВАТЬ ЛИТОЛОГИЮ? ==========================================
 
         if st.session_state['load_data'] and st.session_state['lith']:
             use_lith = st.checkbox('Использовать типы пород при прогнозе?', value=False)
+            st.session_state['use_lith'] = use_lith
             lith_name = st.text_input("Введите название колонки с типами пород, если она есть в данных:", "Код Prime")
             if use_lith:
-                st.info("Будут использованы типы пород.")
+                st.info(f"Будут использованы типы пород. Заданное название колонки: {lith_name}")
                 # lith_name = st.text_input("Введите название колонки с типами пород:", "Код Prime")
                 st.write(f"Выбрана колонка {lith_name} с типами пород.")
 
@@ -149,6 +222,9 @@ def run():
                 ax[0].xaxis.set_tick_params(rotation=45)
                 ax[1].xaxis.set_tick_params(rotation=45)
 
+                ax[0].set_title('Типы пород в исходных данных с измерениями на керне')
+                ax[1].set_title('Типы пород в исходных данных ГИС')
+
                 st.pyplot(fig)
 
             else:
@@ -156,14 +232,17 @@ def run():
 
         # !  ===================================  УДАЛЕНИЕ ОТСУТСТВУЮЩИХ ЛИТОТИПОВ ==========================================
 
+        # if st.session_state['load_data'] and st.session_state['lith']:
+        #     if use_lith:
         if 'delete_missing_lith' not in st.session_state:
             st.session_state['delete_missing_lith'] = False
 
         if st.session_state['load_data'] \
             and st.session_state['lith'] \
+            and st.session_state['use_lith'] \
             and st.session_state['all_gis_input'] is not None \
             and st.session_state['data_input'] is not None:
-            if st.button("Перейти дальше"):
+            if st.button("Перейти дальше 1", key=2):
                 st.session_state['delete_missing_lith'] = True
 
         if st.session_state['load_data'] and st.session_state['lith'] and st.session_state['delete_missing_lith']:
@@ -187,13 +266,28 @@ def run():
                 ax[0].xaxis.set_tick_params(rotation=45)
                 ax[1].xaxis.set_tick_params(rotation=45)
 
+                ax[0].set_title('Типы пород в новых данных с измерениями на керне')
+                ax[1].set_title('Типы пород в новых данных ГИС')
+
                 st.pyplot(fig)
 
 
+        # if st.session_state['load_data'] and st.session_state['lith']:
+            # ! ГЛУБИНЫ 
+        
+        if 'select_depth' not in st.session_state:
+            st.session_state['select_depth'] = False
+        
+        # if st.session_state['delete_missing_lith']:
+        if st.session_state['lith']:
+            if st.button('Перейти дальше 2'):
+                st.session_state['select_depth'] = True
+    
+        if st.session_state['select_depth']:
 
             # * Разбиение на обучающую и тестовую выборки
             depth_name = st.text_input("Введите название колонки с глубиной:", "DEPT")
-            st.write(f"Выбрана колонка {depth_name} с глубинами.")
+            st.info(f"Выбрана колонка {depth_name} с глубинами.")
 
             from sklearn.model_selection import train_test_split
             import pandas as pd
@@ -233,9 +327,43 @@ def run():
                 df_new4 = pd.concat([df_new4, result], axis=1)
 
             data_to_pred = df_new4.copy()
-                
-            st.success("Результат интерполяции данных ГИС по глубинам керновых данных")
-            st.write(data_to_pred)
+            
+
+
+            # if 'show_interpol' not in st.session_state:
+            #     st.session_state['show_interpol'] = False
+            # col_a, col_b = st.columns(2)
+            # if col_a.button('Показать результат интерполяции'):
+            #     st.session_state['show_interpol'] = True
+
+            # def hide_data_interpol():
+            #     st.session_state['show_interpol'] = False
+
+            # if st.session_state['show_interpol']:
+            #     col_b.button('Скрыть результат интерполяции', on_click=hide_data_interpol, key=3)
+            
+            #     if st.session_state['show_interpol']:
+            #         st.success("Результат интерполяции данных ГИС по глубинам керновых данных")
+            #         st.write(data_to_pred)
+
+
+            # show_interpol = st.checkbox('Показать данные?', value=False)
+
+            # if show_interpol:
+            #     st.success("Результат интерполяции данных ГИС по глубинам керновых данных")
+            #     st.write(data_to_pred)
+
+
+            show_interpol = st.checkbox('Показать данные?', value=False)
+
+            @st.cache_data
+            def display_interpolation_data():
+                st.success("Результат интерполяции данных ГИС по глубинам керновых данных")
+                st.write(data_to_pred)
+
+            if show_interpol:
+                display_interpolation_data()
+
 
         # !  ===================================  ПРОГНОЗ ТЕПЛОВЫХ СВОЙСТВ ==========================================
 
@@ -244,13 +372,12 @@ def run():
 
         if st.session_state['load_data'] \
             and st.session_state['lith'] \
-            and st.session_state['delete_missing_lith']:
-            if st.button("дальше 22"):
+                and st.session_state['select_depth']:
+            if st.button("Перейти к прогнозу", key=4):
                 st.session_state['what_to_pred'] = True 
         # st.write(st.session_state)
         if st.session_state['load_data'] \
             and st.session_state['lith'] \
-            and st.session_state['delete_missing_lith'] \
             and st.session_state['what_to_pred']:
 
             st.write("### 2. Прогноз тепловых свойств")
@@ -262,6 +389,15 @@ def run():
                                             "VHC"))
             
             st.info(f"Конфигурация прогноза: {what_to_predict}")
+
+            if 'what_to_predict' not in st.session_state:
+                st.session_state['what_to_predict'] = what_to_predict
+
+            st.session_state['what_to_predict_prev'] = st.session_state['what_to_predict']
+            st.session_state['what_to_predict'] = what_to_predict
+
+
+
 
         
         # !  ................................  ПРОГНОЗ TC_par | VHC ........................................
@@ -358,6 +494,13 @@ def run():
                                                                             lith_name=lith_name, mode_pred=mode_pred,
                                                                             feature_names=feature_names2, 
                                                                             tc_par_name=tc_par_name if what_to_predict != 'VHC' else '')
+                
+                if what_to_predict in ['TC_par', 'VHC']:
+                    pass
+                else:
+                    st.session_state['pred_all_tc_par'] = ALL_GIS_combined
+
+
             else:
                 X_train_orig, X_test_orig, \
                 y_train_tc_par, y_test_tc_par, \
@@ -371,65 +514,71 @@ def run():
                 X_train_combined = scaler.transform(X_train_orig)
                 X_test_combined = scaler.transform(X_test_orig)
                 
-                try:
+                if what_to_predict in ['TC_par', 'VHC']:
                     ALL_GIS_combined = scaler.transform(ALL_GIS.drop(columns=[depth_name, lith_name]))
-                except:
+                else:
                     st.write(r"Для получения прогноза $\lambda_{\bot}$ на весь интервал, загрузите полученный ранее прогноз $\lambda_{\parallel}$ по всему интервалу:")
 
-                    if 'load_tc_par' not in st.session_state:
-                        st.session_state['load_tc_par'] = False
-
                     if st.session_state['load_data'] \
                         and st.session_state['lith'] \
-                        and st.session_state['delete_missing_lith'] \
-                        and st.session_state['what_to_pred']:
-                        if st.button("Загрузить TC_par"):
-                            st.session_state['load_tc_par'] = True 
-                    # st.write(st.session_state)
-                    if st.session_state['load_data'] \
-                        and st.session_state['lith'] \
-                        and st.session_state['delete_missing_lith'] \
-                        and st.session_state['what_to_pred'] \
-                        and st.session_state['load_tc_par']:
+                        and st.session_state['what_to_pred']:# \
+                        # and st.session_state['load_tc_par']:
 
 
                         uploaded_tc_par_pred = st.file_uploader("TC_par_pred", 
                                                                 type=['csv', 'xlsx'], 
                                                                 label_visibility='collapsed',
                                                                 key='0')
-                        pred_all_tc_par = source.load_file_to_st(uploaded_tc_par_pred)
+                        
+                        st.session_state['pred_all_tc_par'] = source.load_file_to_st(uploaded_tc_par_pred, 'с ранее спрогнозированным значением $\lambda_{\parallel}$')
+                        
+                        if st.session_state['pred_all_tc_par'] is not None:
+                            ALL_GIS_combined = scaler.transform(pd.concat((ALL_GIS, st.session_state['pred_all_tc_par'].iloc[:,-1]), axis=1).rename(columns={'TC_par_pred': tc_par_name}).drop(columns=[depth_name, lith_name]))
 
-                        ALL_GIS_combined = scaler.transform(pd.concat((ALL_GIS, pred_all_tc_par.iloc[:,-1]), axis=1).rename(columns={'TC_par_pred': tc_par_name}).drop(columns=[depth_name, lith_name]))
-
-
+            # st.write(st.session_state)
             if what_to_predict != 'TC_per':
                 st.write('Размер обучающей выборки:', X_train_combined.shape, 
                          'Размер тестовой выборки:', X_test_combined.shape, 
                          'Размер таблицы с данными ГИС:', ALL_GIS.shape, 
                          'Размер таблицы с данными ГИС без глубин и литотипов (если они были указаны):', ALL_GIS_combined.shape)
 
-            else:
-                if st.session_state['load_tc_par']:
-                    st.write(X_train_combined.shape, X_test_combined.shape, ALL_GIS.shape, ALL_GIS_combined.shape)
-                else:
-                    st.warning('Пожалуйста, загрузите прогнозные данные для $\lambda_{\parallel}$')
+            # else:
+            #     # if st.session_state['load_tc_par']:
+            #     # st.write(X_train_combined.shape, X_test_combined.shape, ALL_GIS.shape, ALL_GIS_combined.shape)
+            #     # else:
+            #     st.warning('Пожалуйста, загрузите прогнозные данные для $\lambda_{\parallel}$')
+
+
 
         if 'select_model' not in st.session_state:
             st.session_state['select_model'] = False
 
         if st.session_state['load_data'] \
             and st.session_state['lith'] \
-            and st.session_state['delete_missing_lith'] \
             and st.session_state['what_to_pred']:
-            if st.button("Выбрать модель"):
-                st.session_state['select_model'] = True 
-        # st.write(st.session_state)
+            if what_to_predict in ['TC_par', 'VHC']:
+                st.session_state['pred_all_tc_par'] = None
+
+        # st.write(st.session_state['what_to_predict'], st.session_state['what_to_predict_prev'])
         if st.session_state['load_data'] \
             and st.session_state['lith'] \
-            and st.session_state['delete_missing_lith'] \
+            and st.session_state['what_to_pred']:
+            if st.session_state['what_to_predict'] != st.session_state['what_to_predict_prev'] and st.session_state['pred_all_tc_par'] is None:
+                st.session_state['select_model'] = False
+                st.session_state['predict'] = False
+
+        if st.session_state['load_data'] \
+            and st.session_state['lith'] \
+            and st.session_state['what_to_pred']:
+
+            if st.button("Выбрать модель"):
+                st.session_state['select_model'] = True 
+        # st.write(st.session_state['load_data'], st.session_state['lith'], st.session_state['what_to_pred'], st.session_state['select_model'])
+        if st.session_state['load_data'] \
+            and st.session_state['lith'] \
             and st.session_state['what_to_pred'] \
             and st.session_state['select_model']:
-
+        
             # ? PREDICTOR
             model_mode = st.selectbox("Выберите тип модели:", 
                         ("Linear Regression",
@@ -716,89 +865,112 @@ def run():
 
 
 
-            if what_to_predict in ['TC_par', 'VHC']:
-                if what_to_predict == 'TC_par':
-                    pred_name = 'TC_par'
-                    y_pred_tc_par, pred_all_tc_par, model_tc_par = predictor(pred_name)
-                    
-                    if ' ' in model_mode: 
-                        model_name = "".join(model_mode.split())
-                    else: 
-                        model_name = model_mode
-                    df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
-                                            'TC_par_pred': pred_all_tc_par}), 
-                                            filename=model_name +'_'+'TC_par',
-                                            button_text='Скачать прогноз TC_par по всему интервалу')
-                elif what_to_predict == 'VHC':
-                    pred_name = 'VHC'
-                    y_pred_vhc, pred_all_vhc, model_vhc = predictor(pred_name)
+
+            if 'predict' not in st.session_state:
+                st.session_state['predict'] = False
+
+            if st.button('Перейти к прогнозу'):
+                st.session_state['predict'] = True 
+
+            # st.write(st.session_state)
+
+            if st.session_state['predict']:
+
+                if what_to_predict in ['TC_par', 'VHC']:
+                    if what_to_predict == 'TC_par':
+                        pred_name = 'TC_par'
+                        time_0 = time.time()
+                        y_pred_tc_par, pred_all_tc_par, model_tc_par = predictor(pred_name)
+                        time_1 = time.time() - time_0
+                        st.write(f'Время осуществления прогноза: {time_1:.3} с.')
+                        
+                        if ' ' in model_mode: 
+                            model_name = "".join(model_mode.split())
+                        else: 
+                            model_name = model_mode
+                        df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
+                                                'TC_par_pred': pred_all_tc_par}), 
+                                                filename=model_name +'_'+'TC_par'+'_'+'use_lith_'+str(use_lith),
+                                                button_text='Скачать прогноз TC_par по всему интервалу')
+                    elif what_to_predict == 'VHC':
+                        pred_name = 'VHC'
+                        time_0 = time.time()
+                        y_pred_vhc, pred_all_vhc, model_vhc = predictor(pred_name)
+                        time_1 = time.time() - time_0
+                        st.write(f'Время осуществления прогноза: {time_1:.3} с.')
+
+                        if ' ' in model_mode: 
+                            model_name = "".join(model_mode.split())
+                        else: 
+                            model_name = model_mode
+                        df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
+                                                'VHC_pred': pred_all_vhc}), 
+                                                filename=model_name +'_'+'VHC'+'_'+'use_lith_'+str(use_lith),
+                                                button_text='Скачать прогноз VHC по всему интервалу')
+                # elif what_to_predict in ['TC_per'] and st.session_state['load_tc_par']:
+                elif what_to_predict in ['TC_per'] and st.session_state['pred_all_tc_par'] is not None:
+                    pred_name = 'Anisotropy'
+                    time_0 = time.time()
+                    y_pred_anisotropy, pred_all_anisotropy, model_anisotropy = predictor(pred_name)
+                    time_1 = time.time() - time_0
+                    st.write(f'Время осуществления прогноза: {time_1:.3} с.')
 
                     if ' ' in model_mode: 
                         model_name = "".join(model_mode.split())
                     else: 
                         model_name = model_mode
                     df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
-                                            'VHC_pred': pred_all_vhc}), 
-                                            filename=model_name +'_'+'VHC',
-                                            button_text='Скачать прогноз VHC по всему интервалу')
-            elif what_to_predict in ['TC_per']:
-                pred_name = 'Anisotropy'
-                y_pred_anisotropy, pred_all_anisotropy, model_anisotropy = predictor(pred_name)
-
-                if ' ' in model_mode: 
-                    model_name = "".join(model_mode.split())
-                else: 
-                    model_name = model_mode
-                df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
-                                        'K_pred': pred_all_anisotropy}), 
-                                        filename=model_name +'_'+'K',
-                                        button_text='Скачать прогноз K по всему интервалу')
-            
-                y_pred_tc_per = X_test_orig[tc_par_name].values / y_pred_anisotropy
-                y_test_tc_per = data_to_pred.loc[X_test_orig.index, tc_per_name].values
-
-                if use_lith:
-                    try:
-                        pred_all_tc_per = pred_all_tc_par / pred_all_anisotropy
-                    except:
-                        st.write(r"Для получения прогноза $\lambda_{\bot}$ на весь интервал, загрузите полученный ранее прогноз $\lambda_{\parallel}$ по всему интервалу:")
-                        uploaded_tc_par_pred = st.file_uploader("TC_par_pred", 
-                                                                type=['csv', 'xlsx'], 
-                                                                label_visibility='collapsed')
-                        pred_all_tc_par = source.load_file_to_st(uploaded_tc_par_pred)
-                    
-
-                    
-                a = pred_all_tc_par.loc[:, pred_all_tc_par.columns != depth_name].iloc[:, 0].values
-                b = pred_all_anisotropy
-                pred_all_tc_per = a / b
-
-
-
-
-                if ' ' in model_mode: 
-                    model_name = "".join(model_mode.split())
-                else: 
-                    model_name = model_mode
-                df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
-                                        'TC_per_pred': pred_all_tc_per}), 
-                                        filename=model_name +'_'+'TC_per',
-                                        button_text='Скачать прогноз TC_per по всему интервалу',
-                                        add_key='1')
-
-                st.write(r"Метрики для $\lambda_{\bot}$")
-                source.get_metrics(y_test_tc_per, y_pred_tc_per)
-
-
-
-
-
-                fig, ax = plt.subplots(1, 2, figsize=(12,5))
+                                            'K_pred': pred_all_anisotropy}), 
+                                            filename=model_name +'_'+'K'+'_'+'use_lith_'+str(use_lith),
+                                            button_text='Скачать прогноз K по всему интервалу')
                 
-                ax[0].hist(pred_all_anisotropy, bins=20)
-                ax[1].hist(pred_all_tc_per, bins=20)
+                    y_pred_tc_per = X_test_orig[tc_par_name].values / y_pred_anisotropy
+                    y_test_tc_per = data_to_pred.loc[X_test_orig.index, tc_per_name].values
 
-                st.pyplot(fig)
+                    if use_lith:
+                        try:
+                            pred_all_tc_per = st.session_state['pred_all_tc_par'] / pred_all_anisotropy
+                        except:
+                            st.info(r"Для получения прогноза $\lambda_{\bot}$ на весь интервал, загрузите полученный ранее прогноз $\lambda_{\parallel}$ по всему интервалу:")
+
+                            st.warning(r'**Важно!** Пожалуйста, убедитесь, что загружаемый прогноз $\lambda_{\parallel}$ получен с тем же выбором использования типов пород, что и прогнозируемая сейчас $\lambda_{\bot}$!')
+                            uploaded_tc_par_pred = st.file_uploader("TC_par_pred", 
+                                                                    type=['csv', 'xlsx'], 
+                                                                    label_visibility='collapsed')
+                            st.session_state['pred_all_tc_par'] = source.load_file_to_st(uploaded_tc_par_pred, 'с полученным ранее прогнозом $\lambda_{\parallel}$')
+                        
+
+                    if st.session_state['pred_all_tc_par'] is not None:
+                        a = st.session_state['pred_all_tc_par'].loc[:, st.session_state['pred_all_tc_par'].columns != depth_name].iloc[:, 0].values
+                        b = pred_all_anisotropy
+                        pred_all_tc_per = a / b
+
+
+
+
+                        if ' ' in model_mode: 
+                            model_name = "".join(model_mode.split())
+                        else: 
+                            model_name = model_mode
+                        df_to_csv(pd.DataFrame({depth_name: ALL_GIS[depth_name], 
+                                                'TC_per_pred': pred_all_tc_per}), 
+                                                filename=model_name +'_'+'TC_per'+'_'+'use_lith_'+str(use_lith),
+                                                button_text='Скачать прогноз TC_per по всему интервалу',
+                                                add_key='1')
+
+                        st.write(r"Метрики для $\lambda_{\bot}$")
+                        source.get_metrics(y_test_tc_per, y_pred_tc_per)
+
+
+
+
+
+                # fig, ax = plt.subplots(1, 2, figsize=(12,5))
+                
+                # ax[0].hist(pred_all_anisotropy, bins=20)
+                # ax[1].hist(pred_all_tc_per, bins=20)
+
+                # st.pyplot(fig)
 
 
 

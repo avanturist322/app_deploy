@@ -26,7 +26,7 @@ def load_file(file: bytes, filetype: str) -> pd.DataFrame:
     else:
         raise Exception("Неподходящее расширение файла. Пожалуйста, загрузите файл в формате .csv или .xlsx.")
 
-def load_file_to_st(uploaded_file: bytes) -> pd.DataFrame:
+def load_file_to_st(uploaded_file: bytes, warning_name: str) -> pd.DataFrame:
     """
     Загружает файл в Streamlit и выводит данные DataFrame.
     
@@ -41,8 +41,8 @@ def load_file_to_st(uploaded_file: bytes) -> pd.DataFrame:
             file_type = uploaded_file.name.split('.')[-1]
             try:
                 df = load_file(uploaded_file, file_type)
-                st.write(f"Размер файла: {df.shape} \n\n Колонки: {', '.join(df.columns.values.tolist())}")
-                st.write(df.head())
+                # st.write(f"Размер файла: {df.shape} \n\n Колонки: {', '.join(df.columns.values.tolist())}")
+                # st.write(df.head())
                 
                 return df
             
@@ -51,7 +51,7 @@ def load_file_to_st(uploaded_file: bytes) -> pd.DataFrame:
         else:
             st.write("Неподходящее расширение файла. Пожалуйста, загрузите файл в формате .csv или .xlsx.")
     else:
-        st.error("Пожалуйста, загрузите файл.")
+        st.error(f"Пожалуйста, загрузите файл {warning_name}.")
 
 
 import pandas as pd
