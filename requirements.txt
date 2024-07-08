@@ -1,11 +1,10 @@
-numpy==1.26.4
+numpy==1.24.4
 matplotlib
-# numpy==1.26.4
 tqdm
 pandas
 scikit-learn
 xgboost
 catboost==1.2.5
-numpy==1.26.4
+# numpy==1.26.4
 plotly
 ipython
